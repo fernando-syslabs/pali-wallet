@@ -38,9 +38,13 @@ const TransactionsManager = (): ITransactionsManager => {
               provider
             );
 
+          if (!getEvmTxs) {
+            throw new Error('failed to get evm transactions');
+          }
           return getEvmTxs;
         } catch (evmTxError) {
-          return evmTxError;
+          console.log('evmTxError');
+          return evmTxError; //todo throw
         }
     }
   };

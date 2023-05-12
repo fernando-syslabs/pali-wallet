@@ -58,7 +58,10 @@ export class Queue {
       return await Promise.all(this.queue);
     } else {
       return await new Promise((resolve) => {
-        this.doneFn = () => this.done().then(resolve);
+        this.doneFn = () =>
+          this.done()
+            .then(resolve)
+            .catch((e) => console.log('queue error', e)); //todo throw
       });
     }
   }

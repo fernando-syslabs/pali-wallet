@@ -85,9 +85,9 @@ export interface IMainController extends IKeyringManager {
   setIsAutolockEnabled: (isEnabled: boolean) => void;
   transactions: ITransactionsManager;
   unlock: (pwd: string) => Promise<boolean>;
-  updateAssetsFromCurrentAccount: () => void;
-  updateUserNativeBalance: () => void;
-  updateUserTransactionsState: (isPolling: boolean) => void;
+  updateAssetsFromCurrentAccount: () => Promise<void>;
+  updateUserNativeBalance: () => Promise<void>;
+  updateUserTransactionsState: (isPolling: boolean) => Promise<void>;
 }
 
 export interface IEthTokenDetails {

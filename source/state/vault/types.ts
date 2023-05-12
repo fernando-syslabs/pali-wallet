@@ -20,9 +20,11 @@ export interface IVaultState {
   isLoadingBalances: boolean;
   isLoadingTxs: boolean;
   isNetworkChanging: boolean;
+  isPollingEnabled: boolean;
   isTimerEnabled: boolean;
   lastLogin: number;
   networks: INetworksVault;
+  pollingTimer: number;
   timer: number;
 }
 

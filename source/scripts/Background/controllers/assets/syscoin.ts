@@ -40,7 +40,6 @@ const SysAssetsControler = (): ISysAssetsController => {
         requestOptions,
         true
       );
-
       //Validate to know which tokens use, for some cases the request only return tokens without tokensAsset
       //and for some other cases return both
       const isTokensAssetValid = tokensAsset && tokensAsset.length > 0;

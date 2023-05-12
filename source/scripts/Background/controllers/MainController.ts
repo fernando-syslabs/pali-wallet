@@ -67,6 +67,21 @@ const MainController = (walletState): IMainController => {
     promise: Promise<{ chainId: string; networkVersion: number }>;
   } | null = null;
 
+  let _currentPromise: {
+    cancel: () => void;
+    promise: Promise<void>;
+  } | null = null;
+
+  let _2currentPromise: {
+    cancel: () => void;
+    promise: Promise<void>;
+  } | null = null;
+
+  let _3currentPromise: {
+    cancel: () => void;
+    promise: Promise<void>;
+  } | null = null;
+
   const { verifyIfIsTestnet } = keyringManager;
   const createCancellablePromise = <T>(
     executor: (
@@ -668,7 +683,8 @@ const MainController = (walletState): IMainController => {
           )
           .then((updatedTxs) => {
             if (isNil(updatedTxs) || isEmpty(updatedTxs)) {
-              return;
+              console.log('error 1 while updating tx');
+              throw new Error('error while updating tx');
             }
             store.dispatch(setIsLoadingTxs(true));
             store.dispatch(
@@ -678,6 +694,10 @@ const MainController = (walletState): IMainController => {
               })
             );
             store.dispatch(setIsLoadingTxs(false));
+          })
+          .catch((e) => {
+            console.log('error updating tx2', e);
+            throw new Error(e);
           });
         break;
 
@@ -686,47 +706,108 @@ const MainController = (walletState): IMainController => {
     }
   };
 
-  const updateUserTransactionsState = (isPolling: boolean) => {
+  // const updateUserTransactionsState = (isPolling: boolean) => {
+  //   const { accounts, activeAccount, activeNetwork, isBitcoinBased } =
+  //     store.getState().vault;
+
+  //   const currentAccount = accounts[activeAccount.type][activeAccount.id];
+
+  //   switch (isPolling) {
+  //     //CASE FOR POLLING AT ALL -> EVM AND SYS UTX0
+  //     case true:
+  //       transactionsManager.utils
+  //         .updateTransactionsFromCurrentAccount(
+  //           currentAccount,
+  //           isBitcoinBased,
+  //           activeNetwork.url
+  //         )
+  //         .then((updatedTxs) => {
+  //           if (isNil(updatedTxs) || isEmpty(updatedTxs)) {
+  //             return;
+  //           }
+  //           store.dispatch(setIsLoadingTxs(true));
+  //           store.dispatch(
+  //             setActiveAccountProperty({
+  //               property: 'transactions',
+  //               value: updatedTxs,
+  //             })
+  //           );
+  //           store.dispatch(setIsLoadingTxs(false));
+  //         })
+  //         .catch((e) => console.log('updateUserTransactionsState', e));
+  //       break;
+  //     //DEAL WITH NETWORK CHANGING, CHANGING ACCOUNTS ETC
+  //     case false:
+  //       callUpdateTxsMethodBasedByIsBitcoinBased(
+  //         isBitcoinBased,
+  //         currentAccount,
+  //         activeNetwork.url
+  //       );
+
+  //       break;
+
+  //     default:
+  //       break;
+  //   }
+  // };
+
+  const updateUserTransactionsState = async (isPolling: boolean) => {
     const { accounts, activeAccount, activeNetwork, isBitcoinBased } =
       store.getState().vault;
-
     const currentAccount = accounts[activeAccount.type][activeAccount.id];
 
-    switch (isPolling) {
-      //CASE FOR POLLING AT ALL -> EVM AND SYS UTX0
-      case true:
-        transactionsManager.utils
-          .updateTransactionsFromCurrentAccount(
-            currentAccount,
-            isBitcoinBased,
-            activeNetwork.url
-          )
-          .then((updatedTxs) => {
-            if (isNil(updatedTxs) || isEmpty(updatedTxs)) {
-              return;
-            }
-            store.dispatch(setIsLoadingTxs(true));
-            store.dispatch(
-              setActiveAccountProperty({
-                property: 'transactions',
-                value: updatedTxs,
-              })
-            );
-            store.dispatch(setIsLoadingTxs(false));
-          });
-        break;
-      //DEAL WITH NETWORK CHANGING, CHANGING ACCOUNTS ETC
-      case false:
-        callUpdateTxsMethodBasedByIsBitcoinBased(
-          isBitcoinBased,
-          currentAccount,
-          activeNetwork.url
-        );
+    const { promise, cancel } = createCancellablePromise<void>(
+      async (resolve, reject) => {
+        try {
+          switch (isPolling) {
+            //CASE FOR POLLING AT ALL -> EVM AND SYS UTX0
+            case true:
+              const updatedTxs =
+                await transactionsManager.utils.updateTransactionsFromCurrentAccount(
+                  currentAccount,
+                  isBitcoinBased,
+                  activeNetwork.url
+                );
+              if (!isNil(updatedTxs) && !isEmpty(updatedTxs)) {
+                store.dispatch(setIsLoadingTxs(true));
+                store.dispatch(
+                  setActiveAccountProperty({
+                    property: 'transactions',
+                    value: updatedTxs,
+                  })
+                );
+                store.dispatch(setIsLoadingTxs(false));
+                throw new Error('could not update tx');
+              }
+              break;
+            //DEAL WITH NETWORK CHANGING, CHANGING ACCOUNTS ETC
+            case false:
+              callUpdateTxsMethodBasedByIsBitcoinBased(
+                isBitcoinBased,
+                currentAccount,
+                activeNetwork.url
+              );
+              break;
+          }
+          resolve();
+        } catch (error) {
+          console.log('reject updateUserTransactionsState');
+          reject(error);
+        }
+      }
+    );
 
-        break;
+    if (_currentPromise) {
+      _currentPromise.cancel();
+    }
 
-      default:
-        break;
+    _currentPromise = { promise, cancel };
+
+    try {
+      await promise;
+    } catch (error) {
+      console.log('catch update tx state');
+      throw new Error(error);
     }
   };
 
@@ -786,53 +867,83 @@ const MainController = (walletState): IMainController => {
   //---- END SYS METHODS ----//
 
   //---- METHODS FOR UPDATE BOTH ASSETS ----//
-  const updateAssetsFromCurrentAccount = () => {
+  const updateAssetsFromCurrentAccount = async () => {
     const { isBitcoinBased, accounts, activeAccount, activeNetwork, networks } =
       store.getState().vault;
-
     const currentAccount = accounts[activeAccount.type][activeAccount.id];
 
-    assetsManager.utils
-      .updateAssetsFromCurrentAccount(
-        currentAccount,
-        isBitcoinBased,
-        activeNetwork.url,
-        activeNetwork.chainId,
-        networks
-      )
-      .then((updatedAssets) => {
-        const validateUpdatedAndPreviousAssetsLength =
-          updatedAssets.ethereum.length <
-            currentAccount.assets.ethereum.length ||
-          updatedAssets.syscoin.length < currentAccount.assets.syscoin.length;
+    const { promise, cancel } = createCancellablePromise<void>(
+      async (resolve, reject) => {
+        try {
+          const updatedAssets =
+            await assetsManager.utils.updateAssetsFromCurrentAccount(
+              currentAccount,
+              isBitcoinBased,
+              activeNetwork.url,
+              activeNetwork.chainId,
+              networks
+            );
+          const validateUpdatedAndPreviousAssetsLength =
+            updatedAssets.ethereum.length <
+              currentAccount.assets.ethereum.length ||
+            updatedAssets.syscoin.length < currentAccount.assets.syscoin.length;
 
-        const validateIfUpdatedAssetsStayEmpty =
-          (currentAccount.assets.ethereum.length > 0 &&
-            isEmpty(updatedAssets.ethereum)) ||
-          (currentAccount.assets.syscoin.length > 0 &&
-            isEmpty(updatedAssets.syscoin));
+          const validateIfUpdatedAssetsStayEmpty =
+            (currentAccount.assets.ethereum.length > 0 &&
+              isEmpty(updatedAssets.ethereum)) ||
+            (currentAccount.assets.syscoin.length > 0 &&
+              isEmpty(updatedAssets.syscoin));
 
-        const validateIfBothUpdatedIsEmpty =
-          isEmpty(updatedAssets.ethereum) && isEmpty(updatedAssets.syscoin);
+          const validateIfBothUpdatedIsEmpty =
+            isEmpty(updatedAssets.ethereum) && isEmpty(updatedAssets.syscoin);
 
-        const validateIfIsInvalidDispatch =
-          validateUpdatedAndPreviousAssetsLength ||
-          validateIfUpdatedAssetsStayEmpty ||
-          validateIfBothUpdatedIsEmpty;
+          const validateIfIsInvalidDispatch =
+            validateUpdatedAndPreviousAssetsLength ||
+            validateIfUpdatedAssetsStayEmpty ||
+            validateIfBothUpdatedIsEmpty;
 
-        if (validateIfIsInvalidDispatch) {
-          return;
+          if (validateIfIsInvalidDispatch) {
+            resolve();
+            return;
+          }
+
+          if (
+            !isEmpty(updatedAssets.ethereum) ||
+            isEmpty(updatedAssets.syscoin)
+          ) {
+            console.log('reject');
+            reject('failed to update assets');
+          }
+
+          store.dispatch(setIsLoadingAssets(true));
+          store.dispatch(
+            setActiveAccountProperty({
+              property: 'assets',
+              value: updatedAssets as any, //setActiveAccountProperty only accept any as type
+            })
+          );
+          store.dispatch(setIsLoadingAssets(false));
+          resolve();
+        } catch (error) {
+          console.log('updateAssetsFromCurrentAccount error', error);
+          reject(error);
         }
+      }
+    );
 
-        store.dispatch(setIsLoadingAssets(true));
-        store.dispatch(
-          setActiveAccountProperty({
-            property: 'assets',
-            value: updatedAssets as any, //setActiveAccountProperty only accept any as type
-          })
-        );
-        store.dispatch(setIsLoadingAssets(false));
-      });
+    if (_2currentPromise) {
+      _2currentPromise.cancel();
+    }
+
+    _2currentPromise = { promise, cancel };
+
+    try {
+      console.log('update asset promise');
+      await promise;
+    } catch (error) {
+      console.log('updated asset cancel', error);
+      throw new Error(error);
+    }
   };
   //---- END METHODS FOR UPDATE BOTH ASSETS ----//
 
@@ -840,7 +951,7 @@ const MainController = (walletState): IMainController => {
 
   //------------------------- NEW BALANCES METHODS -------------------------//
 
-  const updateUserNativeBalance = () => {
+  const updateUserNativeBalance = async () => {
     const {
       isBitcoinBased,
       activeNetwork: { url: networkUrl },
@@ -850,28 +961,55 @@ const MainController = (walletState): IMainController => {
 
     const currentAccount = accounts[activeAccount.type][activeAccount.id];
 
-    balancesMananger.utils
-      .getBalanceUpdatedForAccount(currentAccount, isBitcoinBased, networkUrl)
-      .then((updatedBalance) => {
-        const actualUserBalance = isBitcoinBased
-          ? currentAccount.balances.syscoin
-          : currentAccount.balances.ethereum;
-        const validateIfCanDispatch = Boolean(
-          Number(actualUserBalance) !== parseFloat(updatedBalance)
-        );
+    const { promise, cancel } = createCancellablePromise<void>(
+      async (resolve, reject) => {
+        try {
+          const updatedBalance =
+            await balancesMananger.utils.getBalanceUpdatedForAccount(
+              currentAccount,
+              isBitcoinBased,
+              networkUrl
+            );
 
-        if (validateIfCanDispatch) {
-          store.dispatch(setIsLoadingBalances(true));
-          store.dispatch(
-            setAccountBalances({
-              ...currentAccount.balances,
-              [isBitcoinBased ? INetworkType.Syscoin : INetworkType.Ethereum]:
-                updatedBalance,
-            })
+          const actualUserBalance = isBitcoinBased
+            ? currentAccount.balances.syscoin
+            : currentAccount.balances.ethereum;
+          const validateIfCanDispatch = Boolean(
+            Number(actualUserBalance) !== parseFloat(updatedBalance)
           );
-          store.dispatch(setIsLoadingBalances(false));
+
+          if (validateIfCanDispatch) {
+            store.dispatch(setIsLoadingBalances(true));
+            store.dispatch(
+              setAccountBalances({
+                ...currentAccount.balances,
+                [isBitcoinBased ? INetworkType.Syscoin : INetworkType.Ethereum]:
+                  updatedBalance,
+              })
+            );
+            store.dispatch(setIsLoadingBalances(false));
+          } else {
+            throw new Error('could not update user native balance');
+          }
+
+          resolve();
+        } catch (error) {
+          reject(error);
         }
-      });
+      }
+    );
+
+    if (_3currentPromise) {
+      _3currentPromise.cancel();
+    }
+
+    _3currentPromise = { promise, cancel };
+
+    try {
+      await promise;
+    } catch (error) {
+      throw new Error(error);
+    }
   };
 
   //---- New method to update some infos from account like Assets, Txs etc ----//
@@ -884,14 +1022,18 @@ const MainController = (walletState): IMainController => {
     if (isNetworkChanging || isNil(activeAccountValues.address)) return;
 
     new Promise<void>((resolve) => {
-      //First update native balance
-      updateUserNativeBalance();
-      //Later update Txs
-      updateUserTransactionsState(false);
-      //Later update Assets
-      updateAssetsFromCurrentAccount();
+      try {
+        //First update native balance
+        updateUserNativeBalance();
+        //Later update Txs
+        updateUserTransactionsState(false);
+        //Later update Assets
+        updateAssetsFromCurrentAccount();
 
-      resolve();
+        resolve();
+      } catch (e) {
+        console.log('error get latest update for current account', e);
+      }
     });
 
     return;

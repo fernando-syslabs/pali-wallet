@@ -41,6 +41,7 @@ const EvmAssetsController = (): IEvmAssetsController => {
         balance: formattedBalance,
       };
     } catch (error) {
+      console.log('EvmAssetsController test');
       return Boolean(error);
     }
   };
@@ -204,7 +205,7 @@ const EvmAssetsController = (): IEvmAssetsController => {
     networks: INetworksVault
   ): Promise<ITokenEthProps[]> => {
     if (isEmpty(account.assets.ethereum)) return [];
-    const queue = new Queue(3);
+    const queue = new Queue(2);
 
     try {
       queue.execute(

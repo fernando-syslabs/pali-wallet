@@ -47,18 +47,22 @@ export const verifyIfIsTestnet = async (
   networkUrl: string,
   isBitcoinBased: boolean
 ) => {
-  const { chain, chainId }: any = isBitcoinBased
-    ? await validateSysRpc(networkUrl)
-    : await validateEthRpc(networkUrl);
+  try {
+    const { chain, chainId }: any = isBitcoinBased
+      ? await validateSysRpc(networkUrl)
+      : await validateEthRpc(networkUrl);
 
-  //todo: this can be in some consts file
-  const ethTestnetsChainsIds = [5700, 80001, 11155111, 421611, 5, 69]; // Some ChainIds from Ethereum Testnets as Polygon Testnet, Goerli, Sepolia, etc.
+    //todo: this can be in some consts file
+    const ethTestnetsChainsIds = [5700, 80001, 11155111, 421611, 5, 69]; // Some ChainIds from Ethereum Testnets as Polygon Testnet, Goerli, Sepolia, etc.
 
-  return Boolean(
-    chain === 'test' ||
-      chain === 'testnet' ||
-      ethTestnetsChainsIds.some(
-        (validationChain) => validationChain === chainId
-      )
-  );
+    return Boolean(
+      chain === 'test' ||
+        chain === 'testnet' ||
+        ethTestnetsChainsIds.some(
+          (validationChain) => validationChain === chainId
+        )
+    );
+  } catch (e) {
+    console.log('verifyIfIsTestnet error', e);
+  }
 };

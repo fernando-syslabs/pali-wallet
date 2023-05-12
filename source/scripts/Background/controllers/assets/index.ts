@@ -47,13 +47,18 @@ const AssetsManager = (): IAssetsManager => {
             currentAccount,
             networks
           );
+          if (!getEvmAssets) {
+            throw new Error('failed to update assets');
+          }
 
           return {
             ...currentAccount.assets,
             ethereum: getEvmAssets,
           };
         } catch (evmUpdateError) {
-          return evmUpdateError;
+          console.log('asset evmUpdateError');
+
+          throw new Error(evmUpdateError);
         }
     }
   };

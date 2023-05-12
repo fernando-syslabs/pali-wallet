@@ -130,8 +130,85 @@ browser.runtime.onConnect.addListener(async (port: Runtime.Port) => {
     });
   }
 });
+// let intervalId;
+let isListenerRegistered = false;
+let pollingTimer = 15000; // initial polling time in milliseconds
+// const pollingRetryTime = 60000; // time to wait before retrying after an error in milliseconds
 
-async function checkForUpdates() {
+// async function checkForUpdates() {
+//   const {
+//     changingConnectedAccount: { isChangingConnectedAccount },
+//     isLoadingAssets,
+//     isLoadingBalances,
+//     isLoadingTxs,
+//     isNetworkChanging,
+//   } = store.getState().vault;
+
+//   const notValidToRunPolling =
+//     isChangingConnectedAccount ||
+//     isLoadingAssets ||
+//     isLoadingBalances ||
+//     isLoadingTxs ||
+//     isNetworkChanging;
+
+//   if (notValidToRunPolling) {
+//     //todo: do we also need to return if walle is unlocked?
+//     return;
+//   }
+
+//   try {
+//     console.log('polling started');
+//     //Method that update Balances for current user based on isBitcoinBased state ( validated inside )
+//     window.controller.wallet.updateUserNativeBalance();
+
+//     //Method that update TXs for current user based on isBitcoinBased state ( validated inside )
+//     window.controller.wallet.updateUserTransactionsState(true);
+
+//     //Method that update Assets for current user based on isBitcoinBased state ( validated inside )
+//     window.controller.wallet.updateAssetsFromCurrentAccount();
+
+//     // reset polling time to initial value on success
+//     pollingTime = 15000;
+//   } catch (error) {
+//     console.error(error);
+
+//     // increase polling time on error
+//     pollingTime = pollingRetryTime;
+//   }
+// }
+
+// function registerListener() {
+//   if (isListenerRegistered) {
+//     return;
+//   }
+
+//   browser.runtime.onConnect.addListener((port) => {
+//     let isPolling = false;
+
+//     if (port.name === 'polling') {
+//       port.onMessage.addListener((message) => {
+//         if (message.action === 'startPolling' && !isPolling) {
+//           isPolling = true;
+//           intervalId = setInterval(checkForUpdates, pollingTime);
+//           port.postMessage({ intervalId });
+//         } else if (message.action === 'stopPolling') {
+//           clearInterval(intervalId);
+//           isPolling = false;
+//         }
+//       });
+//     }
+//   });
+
+//   isListenerRegistered = true;
+// }
+
+// registerListener();
+
+const pollingRetryTime = 60000; // time to wait before retrying after an error in milliseconds
+let intervalId; // variable to hold the interval ID
+let isPolling = false; // variable to keep track of whether polling is currently active
+
+async function checkForUpdates(port) {
   const {
     changingConnectedAccount: { isChangingConnectedAccount },
     isLoadingAssets,
@@ -145,25 +222,48 @@ async function checkForUpdates() {
     isLoadingAssets ||
     isLoadingBalances ||
     isLoadingTxs ||
-    isNetworkChanging;
+    isNetworkChanging ||
+    isPolling;
 
   if (notValidToRunPolling) {
     //todo: do we also need to return if walle is unlocked?
     return;
   }
 
-  //Method that update Balances for current user based on isBitcoinBased state ( validated inside )
-  window.controller.wallet.updateUserNativeBalance();
+  try {
+    console.log('polling started');
+    //Method that update Balances for current user based on isBitcoinBased state ( validated inside )
+    Promise.all([
+      window.controller.wallet.updateUserNativeBalance(),
 
-  //Method that update TXs for current user based on isBitcoinBased state ( validated inside )
-  window.controller.wallet.updateUserTransactionsState(true);
+      //Method that update TXs for current user based on isBitcoinBased state ( validated inside )
+      window.controller.wallet.updateUserTransactionsState(true),
 
-  //Method that update Assets for current user based on isBitcoinBased state ( validated inside )
-  window.controller.wallet.updateAssetsFromCurrentAccount();
+      //Method that update Assets for current user based on isBitcoinBased state ( validated inside )
+      window.controller.wallet
+        .updateAssetsFromCurrentAccount()
+        .catch((e) => console.log('background e', e)),
+    ]);
+
+    // reset polling time to initial value on success
+    pollingTimer = 15000;
+  } catch (error) {
+    console.error('polling error', error);
+
+    // increase polling time on error
+    pollingTimer = pollingRetryTime;
+
+    if (error.response && error.response.status === 429) {
+      console.log('429 detected, stopping polling');
+      clearInterval(intervalId);
+      isPolling = false;
+    }
+  }
+
+  if (port && isPolling) {
+    port.postMessage({ action: 'continuePolling' });
+  }
 }
-
-let intervalId;
-let isListenerRegistered = false;
 
 function registerListener() {
   if (isListenerRegistered) {
@@ -171,17 +271,25 @@ function registerListener() {
   }
 
   browser.runtime.onConnect.addListener((port) => {
-    let isPolling = false;
-
     if (port.name === 'polling') {
-      port.onMessage.addListener((message) => {
-        if (message.action === 'startPolling' && !isPolling) {
-          isPolling = true;
-          intervalId = setInterval(checkForUpdates, 15000);
-          port.postMessage({ intervalId });
-        } else if (message.action === 'stopPolling') {
-          clearInterval(intervalId);
-          isPolling = false;
+      port.onMessage.addListener(async (message) => {
+        try {
+          if (message.action === 'startPolling' && !isPolling) {
+            isPolling = true;
+            intervalId = setInterval(async () => {
+              try {
+                await checkForUpdates(port);
+              } catch (error) {
+                console.error(error);
+              }
+            }, pollingTimer);
+            port.postMessage({ intervalId });
+          } else if (message.action === 'stopPolling') {
+            clearInterval(intervalId);
+            isPolling = false;
+          }
+        } catch (error) {
+          console.error(error);
         }
       });
     }

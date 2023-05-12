@@ -2,8 +2,8 @@ import { ethers } from 'ethers';
 import flatMap from 'lodash/flatMap';
 
 import { IPaliAccount } from 'state/vault/types';
-import { Queue } from './queue';
 
+import { Queue } from './queue';
 import { IEvmTransactionsController, IEvmTransactionResponse } from './types';
 import {
   findUserTxsInProviderByBlocksRange,
@@ -18,38 +18,47 @@ const EvmTransactionsController = (): IEvmTransactionsController => {
     startBlock: number,
     endBlock: number
   ) => {
-    const provider = new ethers.providers.JsonRpcProvider(networkUrl);
+    try {
+      const provider = new ethers.providers.JsonRpcProvider(networkUrl);
 
-    const providerUserTxs = await findUserTxsInProviderByBlocksRange(
-      provider,
-      currentAccount.address,
-      startBlock,
-      endBlock
-    );
+      const providerUserTxs = await findUserTxsInProviderByBlocksRange(
+        provider,
+        currentAccount.address,
+        startBlock,
+        endBlock
+      );
 
-    const treatedTxs = validateAndManageUserTransactions(providerUserTxs);
+      const treatedTxs = validateAndManageUserTransactions(providerUserTxs);
 
-    return treatedTxs as IEvmTransactionResponse[];
+      return treatedTxs as IEvmTransactionResponse[];
+    } catch (e) {
+      console.log('EvmTransactionsController error'); //todo throw
+    }
   };
 
   const firstRunForProviderTransactions = async (
     currentAccount: IPaliAccount,
     networkUrl: string
   ) => {
-    const provider = new ethers.providers.JsonRpcProvider(networkUrl);
+    try {
+      const provider = new ethers.providers.JsonRpcProvider(networkUrl);
+      
 
-    const latestBlockNumber = await provider.getBlockNumber();
-    const fromBlock = latestBlockNumber - 30; // Get only the last 30 blocks
-    const toBlock = latestBlockNumber;
+      const latestBlockNumber = await provider.getBlockNumber();
+      const fromBlock = latestBlockNumber - 30; // Get only the last 30 blocks
+      const toBlock = latestBlockNumber;
 
-    const txs = await getUserTransactionByDefaultProvider(
-      currentAccount,
-      networkUrl,
-      fromBlock,
-      toBlock
-    );
+      const txs = await getUserTransactionByDefaultProvider(
+        currentAccount,
+        networkUrl,
+        fromBlock,
+        toBlock
+      );
 
-    return txs;
+      return txs;
+    } catch (e) {
+      console.log('firstRunForProviderTransactions error'); //todo throw
+    }
   };
 
   const pollingEvmTransactions = async (
@@ -59,6 +68,7 @@ const EvmTransactionsController = (): IEvmTransactionsController => {
   ) => {
     try {
       const queue = new Queue(3);
+
       const latestBlockNumber = await provider.getBlockNumber();
 
       const fromBlock = latestBlockNumber - 30; // Get only the last 30 blocks;
@@ -84,7 +94,6 @@ const EvmTransactionsController = (): IEvmTransactionsController => {
                 provider,
                 pollingTx
               );
-
               return getTxTimestamp;
             })
           )
@@ -98,7 +107,8 @@ const EvmTransactionsController = (): IEvmTransactionsController => {
 
       return flatMap(txsWithTimestamp);
     } catch (error) {
-      console.log(error);
+      console.log('pollingEvmTransactions');
+      console.log(error); //todo throw
     }
   };
 

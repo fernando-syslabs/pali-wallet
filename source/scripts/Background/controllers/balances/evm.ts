@@ -24,6 +24,8 @@ const EvmBalanceController = (): IEvmBalanceController => {
         ? '0'
         : verifyZerosInBalanceAndFormat(parseFloat(formattedBalance), 4);
     } catch (error) {
+      console.log('error EvmBalanceController', error);
+
       return String(currentAccount.balances.ethereum);
     }
   };

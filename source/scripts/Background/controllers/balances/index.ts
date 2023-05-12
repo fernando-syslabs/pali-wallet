@@ -31,9 +31,15 @@ const BalancesManager = (): IBalancesManager => {
               networkUrl
             );
 
+          console.log('evm balance', getEvmBalance);
+          if (!getEvmBalance) {
+            throw new Error('couldnt get balance');
+          }
           return getEvmBalance;
         } catch (evmBalanceError) {
-          return evmBalanceError;
+          console.log('balance evmUpdateError');
+
+          throw new Error(evmBalanceError);
         }
     }
   };

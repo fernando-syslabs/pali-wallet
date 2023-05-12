@@ -60,6 +60,8 @@ export const initialState: IVaultState = {
   isTimerEnabled: true,
   networks: initialNetworksState,
   error: false,
+  isPollingEnabled: true,
+  pollingTimer: 15000,
 };
 
 const VaultState = createSlice({
@@ -242,6 +244,12 @@ const VaultState = createSlice({
     },
     setIsNetworkChanging(state: IVaultState, action: PayloadAction<boolean>) {
       state.isNetworkChanging = action.payload;
+    },
+    setIsPollingEnabled(state: IVaultState, action: PayloadAction<boolean>) {
+      state.isPollingEnabled = action.payload;
+    },
+    setPollingTimer(state: IVaultState, action: PayloadAction<number>) {
+      state.pollingTimer = action.payload;
     },
     setHasEthProperty(state: IVaultState, action: PayloadAction<boolean>) {
       state.hasEthProperty = action.payload;
