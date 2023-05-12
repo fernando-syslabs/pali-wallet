@@ -132,7 +132,7 @@ browser.runtime.onConnect.addListener(async (port: Runtime.Port) => {
 });
 // let intervalId;
 let isListenerRegistered = false;
-let pollingTimer = 15000; // initial polling time in milliseconds
+let pollingTimer = 20000; // initial polling time in milliseconds
 // const pollingRetryTime = 60000; // time to wait before retrying after an error in milliseconds
 
 // async function checkForUpdates() {
@@ -208,7 +208,7 @@ const pollingRetryTime = 60000; // time to wait before retrying after an error i
 let intervalId; // variable to hold the interval ID
 let isPolling = false; // variable to keep track of whether polling is currently active
 
-async function checkForUpdates(port) {
+async function checkForUpdates() {
   const {
     changingConnectedAccount: { isChangingConnectedAccount },
     isLoadingAssets,
@@ -222,46 +222,32 @@ async function checkForUpdates(port) {
     isLoadingAssets ||
     isLoadingBalances ||
     isLoadingTxs ||
-    isNetworkChanging ||
-    isPolling;
+    isNetworkChanging;
 
   if (notValidToRunPolling) {
-    //todo: do we also need to return if walle is unlocked?
     return;
   }
 
   try {
     console.log('polling started');
     //Method that update Balances for current user based on isBitcoinBased state ( validated inside )
-    Promise.all([
+    Promise.race([
       window.controller.wallet.updateUserNativeBalance(),
 
       //Method that update TXs for current user based on isBitcoinBased state ( validated inside )
       window.controller.wallet.updateUserTransactionsState(true),
 
       //Method that update Assets for current user based on isBitcoinBased state ( validated inside )
-      window.controller.wallet
-        .updateAssetsFromCurrentAccount()
-        .catch((e) => console.log('background e', e)),
+      window.controller.wallet.updateAssetsFromCurrentAccount(),
     ]);
 
     // reset polling time to initial value on success
-    pollingTimer = 15000;
+    pollingTimer = 20000;
   } catch (error) {
     console.error('polling error', error);
 
     // increase polling time on error
     pollingTimer = pollingRetryTime;
-
-    if (error.response && error.response.status === 429) {
-      console.log('429 detected, stopping polling');
-      clearInterval(intervalId);
-      isPolling = false;
-    }
-  }
-
-  if (port && isPolling) {
-    port.postMessage({ action: 'continuePolling' });
   }
 }
 
@@ -278,7 +264,7 @@ function registerListener() {
             isPolling = true;
             intervalId = setInterval(async () => {
               try {
-                await checkForUpdates(port);
+                await checkForUpdates();
               } catch (error) {
                 console.error(error);
               }
@@ -289,7 +275,7 @@ function registerListener() {
             isPolling = false;
           }
         } catch (error) {
-          console.error(error);
+          console.error('polling error browser', error);
         }
       });
     }

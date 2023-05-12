@@ -42,7 +42,6 @@ const EvmTransactionsController = (): IEvmTransactionsController => {
   ) => {
     try {
       const provider = new ethers.providers.JsonRpcProvider(networkUrl);
-      
 
       const latestBlockNumber = await provider.getBlockNumber();
       const fromBlock = latestBlockNumber - 30; // Get only the last 30 blocks

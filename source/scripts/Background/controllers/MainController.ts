@@ -307,9 +307,9 @@ const MainController = (walletState): IMainController => {
         store.dispatch(setIsLoadingBalances(false));
         await utilsController.setFiat();
 
-        updateAssetsFromCurrentAccount();
+        await updateAssetsFromCurrentAccount();
 
-        updateUserTransactionsState(false);
+        await updateUserTransactionsState(false);
         window.controller.dapp.handleStateChange(PaliEvents.chainChanged, {
           method: PaliEvents.chainChanged,
           params: {
@@ -340,6 +340,7 @@ const MainController = (walletState): IMainController => {
         return;
       })
       .catch((reason) => {
+        console.log('failed');
         if (reason === 'Network change cancelled') {
           console.error('User asked to switch network - slow connection');
         } else {
@@ -994,6 +995,7 @@ const MainController = (walletState): IMainController => {
 
           resolve();
         } catch (error) {
+          console.log('reject balance');
           reject(error);
         }
       }
@@ -1008,35 +1010,30 @@ const MainController = (walletState): IMainController => {
     try {
       await promise;
     } catch (error) {
+      console.log('catch balance');
       throw new Error(error);
     }
   };
 
   //---- New method to update some infos from account like Assets, Txs etc ----//
-  const getLatestUpdateForCurrentAccount = () => {
+  const getLatestUpdateForCurrentAccount = async () => {
     const { isNetworkChanging, accounts, activeAccount } =
       store.getState().vault;
 
     const activeAccountValues = accounts[activeAccount.type][activeAccount.id];
 
-    if (isNetworkChanging || isNil(activeAccountValues.address)) return;
+    if (isNetworkChanging || isNil(activeAccountValues.address)) {
+      throw new Error('Could not update account while changing network');
+    }
 
-    new Promise<void>((resolve) => {
-      try {
-        //First update native balance
-        updateUserNativeBalance();
-        //Later update Txs
-        updateUserTransactionsState(false);
-        //Later update Assets
-        updateAssetsFromCurrentAccount();
-
-        resolve();
-      } catch (e) {
-        console.log('error get latest update for current account', e);
-      }
-    });
-
-    return;
+    Promise.all([
+      //First update native balance
+      updateUserNativeBalance(),
+      //Later update Txs
+      updateUserTransactionsState(false),
+      //Later update Assets
+      updateAssetsFromCurrentAccount(),
+    ]);
   };
 
   return {
