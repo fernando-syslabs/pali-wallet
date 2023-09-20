@@ -19,11 +19,12 @@ task('clean', () => {
 
 // Compile TypeScript to JavaScript
 task('scripts', () => {
+  const tsProject = ts.createProject('tsconfig.json');
   return gulp
     .src(['source/**/*.ts', 'source/**/*.tsx'])
-    .pipe(ts())
+    .pipe(tsProject())
     .pipe(babel())
-    .pipe(dest('dist'));
+    .pipe(dest('dist/js'));
 });
 
 // Compile LESS to CSS and concatenate
