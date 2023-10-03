@@ -1,23 +1,17 @@
 import gulp from 'gulp';
-
 const { task, dest, src, series, parallel } = gulp;
-
 import ts from 'gulp-typescript';
-
 import sourceMaps from 'gulp-sourcemaps';
-
 import babel from 'gulp-babel';
-
 import less from 'gulp-less';
-
 import concat from 'gulp-concat';
-
 import merge from 'merge-stream';
-
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
+import cssnano from 'cssnano';
+import postcss from 'gulp-postcss';
 import path from 'path';
-
 import { fileURLToPath } from 'url';
-
 import { deleteAsync } from 'del';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -73,13 +67,12 @@ task('scripts', () => {
     // Create a new TypeScript project for each entry
     const tsProject = ts.createProject('tsconfig.json');
 
-    return gulp
-      .src(entries[scriptName])
+    return src(entries[scriptName])
       .pipe(sourceMaps.init())
       .pipe(tsProject())
       .pipe(babel())
       .pipe(sourceMaps.write())
-      .pipe(gulp.dest(`dist/js/${scriptName}`));
+      .pipe(dest(`dist/js/${scriptName}`));
   });
 
   return merge(scriptsTask);
@@ -87,17 +80,25 @@ task('scripts', () => {
 
 task('copy-json', async () => {
   const jsonTasks = Object.keys(jsonFiles).map((jsonName) => {
-    return gulp.src(jsonFiles[jsonName]).pipe(dest(`dist/${jsonName}`));
+    return src(jsonFiles[jsonName]).pipe(dest(`dist/${jsonName}`));
   });
 
   return merge(jsonTasks);
 });
 
 // Compile LESS to CSS and concatenate
-task('styles', () => {
-  return gulp
-    .src('source/**/*.less')
+task('less-styles', () => {
+  return src('source/**/*.less')
     .pipe(less())
+    .pipe(postcss([cssnano]))
+    .pipe(concat('less-styles.css'))
+    .pipe(dest('dist/css'));
+});
+
+// Compile Tailwind CSS
+task('styles', () => {
+  return src('source/assets/styles/index.css')
+    .pipe(postcss([tailwindcss('./tailwind.config.js'), autoprefixer, cssnano]))
     .pipe(concat('styles.css'))
     .pipe(dest('dist/css'));
 });
@@ -117,7 +118,10 @@ task('watch', () => {
 // Default task: clean, build scripts, styles, and copy assets
 task(
   'default',
-  series('clean', parallel('scripts', 'copy-json', 'styles', 'copy-assets'))
+  series(
+    'clean',
+    parallel('scripts', 'copy-json', 'less-styles', 'styles', 'copy-assets')
+  )
 );
 
 // Development task: default + watch for changes
