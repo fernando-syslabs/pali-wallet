@@ -3,13 +3,17 @@ const { task, dest, src, series, parallel } = gulp;
 import ts from 'gulp-typescript';
 import sourceMaps from 'gulp-sourcemaps';
 import babel from 'gulp-babel';
-import less from 'gulp-less';
+import rename from 'gulp-rename';
 import concat from 'gulp-concat';
 import merge from 'merge-stream';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 import cssnano from 'cssnano';
 import postcss from 'gulp-postcss';
+import inject from 'gulp-inject';
+import nunjucksRender from 'gulp-nunjucks-render';
+import htmlmin from 'gulp-htmlmin';
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { deleteAsync } from 'del';
@@ -55,13 +59,31 @@ const jsonFiles = {
   manifest: path.join(__dirname, 'manifest.json'),
 };
 
+//HTML files from Views path that will be bundled and injected with the JS files
+const htmlConfigs = [
+  {
+    template: 'app.html',
+    filename: 'app.html',
+    chunks: ['app'],
+  },
+  {
+    template: 'external.html',
+    filename: 'external.html',
+    chunks: ['external'],
+  },
+  {
+    template: 'trezor-usb-permissions.html',
+    filename: 'trezor-usb-permissions.html',
+    chunks: ['trezorUSB'],
+  },
+];
+
 // Clean the 'dist' directory before rebuilding
 task('clean', () => {
   return deleteAsync(['dist/**/*']);
 });
 
 // Compile TypeScript to JavaScript
-
 task('scripts', () => {
   const scriptsTask = Object.keys(entries).map((scriptName) => {
     // Create a new TypeScript project for each entry
@@ -71,28 +93,52 @@ task('scripts', () => {
       .pipe(sourceMaps.init())
       .pipe(tsProject())
       .pipe(babel())
+      .pipe(rename({ basename: scriptName, extname: '.js' })) // Rename each output file based on its entry name
       .pipe(sourceMaps.write())
-      .pipe(dest(`dist/js/${scriptName}`));
+      .pipe(dest(`dist/js`));
   });
 
   return merge(scriptsTask);
 });
 
+//Compile HTML files from View path and inject the JS files
+task('htmls', () => {
+  const tasks = htmlConfigs.map((config) => {
+    //Get the HTML files by name that will be bundled
+    const htmlSrc = src(path.join(viewsPath, config.template)).pipe(
+      nunjucksRender({ path: [viewsPath] })
+    );
+
+    //Here is the each JS file that will be injected in each HTML file
+    const sources = src(
+      config.chunks.map((chunk) => `dist/js/${chunk}.js`),
+      { read: false, allowEmpty: true }
+    );
+
+    //Bundle the HTML and inject the correct JS files based by name like app.html -> app.js
+    return htmlSrc
+      .pipe(
+        inject(sources, {
+          relative: true,
+          transform: (filePath) => {
+            return `<script defer src="${filePath}"></script>`;
+          },
+        })
+      )
+      .pipe(htmlmin({ collapseWhitespace: true }))
+      .pipe(dest('dist', { overwrite: true }));
+  });
+
+  return merge(tasks);
+});
+
+//Compile the manifest.json file or any .json file that exists
 task('copy-json', async () => {
   const jsonTasks = Object.keys(jsonFiles).map((jsonName) => {
-    return src(jsonFiles[jsonName]).pipe(dest(`dist/${jsonName}`));
+    return src(jsonFiles[jsonName]).pipe(dest(`dist`));
   });
 
   return merge(jsonTasks);
-});
-
-// Compile LESS to CSS and concatenate
-task('less-styles', () => {
-  return src('source/**/*.less')
-    .pipe(less())
-    .pipe(postcss([cssnano]))
-    .pipe(concat('less-styles.css'))
-    .pipe(dest('dist/css'));
 });
 
 // Compile Tailwind CSS
@@ -120,7 +166,9 @@ task(
   'default',
   series(
     'clean',
-    parallel('scripts', 'copy-json', 'less-styles', 'styles', 'copy-assets')
+    'scripts',
+    'htmls',
+    parallel('styles', 'copy-assets', 'copy-json')
   )
 );
 
