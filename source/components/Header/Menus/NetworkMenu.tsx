@@ -23,6 +23,12 @@ interface INetworkComponent {
   >;
 }
 
+const customSort = (a: INetwork, b: INetwork) => {
+  const order = { 570: 2, 57: 1 };
+
+  return (order[b.chainId] || 0) - (order[a.chainId] || 0);
+};
+
 export const NetworkMenu: React.FC<INetworkComponent> = (
   props: INetworkComponent
 ) => {
@@ -68,8 +74,9 @@ export const NetworkMenu: React.FC<INetworkComponent> = (
   const handleChangeNetwork = async (network: INetwork, chain: string) => {
     setSelectedNetwork({ network, chain });
     const cannotContinueWithTrezorAccount =
-      // verify if user are on bitcoinBased network and if current account is Trezor-based
+      // verify if user are on bitcoinBased network and if current account is Trezor-based or Ledger-based
       (isBitcoinBased && activeAccountType === KeyringAccountType.Trezor) ||
+      (isBitcoinBased && activeAccountType === KeyringAccountType.Ledger) ||
       // or if user are in EVM network, using a trezor account, trying to change to UTXO network.
       (Object.keys(networks.ethereum).find(
         (chainId) => `${activeNetwork.chainId}` === chainId
@@ -278,9 +285,7 @@ export const NetworkMenu: React.FC<INetworkComponent> = (
 
                         <Disclosure.Panel className="h-max pb-2 pt-0.5 text-sm">
                           {Object.values(networks.ethereum)
-                            .sort((a, b) =>
-                              a.chainId === 57 ? -1 : b.chainId === 57 ? 1 : 0
-                            )
+                            .sort(customSort)
 
                             .map((currentNetwork: any, index: number, arr) => (
                               <li

@@ -79,7 +79,7 @@ const ExternalWatchAsset = () => {
         <div className="flex flex-col items-center justify-center w-full">
           <div className="flex flex-col pb-4 pt-4 w-full border-b border-t border-dashed border-dashed-dark">
             <h2 className="text-center text-base">
-              {t('settings.allow')} {host} {t('settings.toAddAToken')}?
+              {t('send.allow')} {host} {t('settings.toAddAToken')}?
             </h2>
             <div className="flex flex-col mt-1 px-4 w-full text-center text-xs">
               <span>{t('settings.thisWillAllowToken')}</span>
@@ -111,7 +111,7 @@ const ExternalWatchAsset = () => {
                 </p>
 
                 <p className="flex flex-col pt-2 w-full text-brand-white font-poppins font-thin">
-                  {t('settings.balance')}
+                  {t('send.balance')}
                   <span className="text-brand-royalblue text-xs">
                     {assetInfo.balance}
                   </span>
