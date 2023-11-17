@@ -1,22 +1,30 @@
+/* eslint-disable import/order */
+/* eslint-disable import/no-extraneous-dependencies */
 import gulp from 'gulp';
 const { task, dest, src, series, parallel } = gulp;
-import ts from 'gulp-typescript';
-import sourceMaps from 'gulp-sourcemaps';
-import babel from 'gulp-babel';
-import rename from 'gulp-rename';
+// import babel from 'gulp-babel';
 import concat from 'gulp-concat';
+import htmlmin from 'gulp-htmlmin';
+import inject from 'gulp-inject';
+import nunjucksRender from 'gulp-nunjucks-render';
+import postcss from 'gulp-postcss';
+// import rename from 'gulp-rename';
+import sourceMaps from 'gulp-sourcemaps';
+// import ts from 'gulp-typescript';
+import browserifycss from 'browserify-css';
+import uglify from 'gulp-uglify';
 import merge from 'merge-stream';
+import path from 'path';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 import cssnano from 'cssnano';
-import postcss from 'gulp-postcss';
-import inject from 'gulp-inject';
-import nunjucksRender from 'gulp-nunjucks-render';
-import htmlmin from 'gulp-htmlmin';
-
-import path from 'path';
+import tsify from 'tsify';
 import { fileURLToPath } from 'url';
+import babelify from 'babelify';
 import { deleteAsync } from 'del';
+import buffer from 'vinyl-buffer';
+import source from 'vinyl-source-stream';
+import browserify from 'browserify';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -79,26 +87,35 @@ const htmlConfigs = [
 ];
 
 // Clean the 'dist' directory before rebuilding
-task('clean', () => {
-  return deleteAsync(['dist/**/*']);
-});
+task('clean', () => deleteAsync(['dist/**/*']));
 
 // Compile TypeScript to JavaScript
 task('scripts', () => {
-  const scriptsTask = Object.keys(entries).map((scriptName) => {
-    // Create a new TypeScript project for each entry
-    const tsProject = ts.createProject('tsconfig.json');
-
-    return src(entries[scriptName])
+  const tasks = Object.keys(entries).map((entry) =>
+    browserify({
+      basedir: '.',
+      debug: true,
+      entries: [entries[entry]],
+      cache: {},
+      packageCache: {},
+    })
+      .plugin(tsify)
+      .transform(
+        babelify.configure({
+          presets: ['@babel/preset-env'],
+        })
+      )
+      .transform(browserifycss, { global: true })
+      .bundle()
+      .pipe(source(`${entry}.bundle.js`)) // output filename
+      .pipe(buffer())
       .pipe(sourceMaps.init())
-      .pipe(tsProject())
-      .pipe(babel())
-      .pipe(rename({ basename: scriptName, extname: '.js' })) // Rename each output file based on its entry name
+      .pipe(uglify()) // Use uglify to minify your code if you want
       .pipe(sourceMaps.write())
-      .pipe(dest(`dist/js`));
-  });
+      .pipe(dest('dist/js'))
+  );
 
-  return merge(scriptsTask);
+  return merge(tasks);
 });
 
 //Compile HTML files from View path and inject the JS files
@@ -120,9 +137,7 @@ task('htmls', () => {
       .pipe(
         inject(sources, {
           relative: true,
-          transform: (filePath) => {
-            return `<script defer src="${filePath}"></script>`;
-          },
+          transform: (filePath) => `<script defer src="${filePath}"></script>`,
         })
       )
       .pipe(htmlmin({ collapseWhitespace: true }))
@@ -134,25 +149,23 @@ task('htmls', () => {
 
 //Compile the manifest.json file or any .json file that exists
 task('copy-json', async () => {
-  const jsonTasks = Object.keys(jsonFiles).map((jsonName) => {
-    return src(jsonFiles[jsonName]).pipe(dest(`dist`));
-  });
+  const jsonTasks = Object.keys(jsonFiles).map((jsonName) =>
+    src(jsonFiles[jsonName]).pipe(dest(`dist`))
+  );
 
   return merge(jsonTasks);
 });
 
 // Compile Tailwind CSS
-task('styles', () => {
-  return src('source/assets/styles/index.css')
+task('styles', () =>
+  src('source/assets/styles/index.css')
     .pipe(postcss([tailwindcss('./tailwind.config.js'), autoprefixer, cssnano]))
     .pipe(concat('styles.css'))
-    .pipe(dest('dist/css'));
-});
+    .pipe(dest('dist/css'))
+);
 
 // Copy static assets to 'dist' directory
-task('copy-assets', () => {
-  return src('source/assets/**/*').pipe(dest('dist/assets'));
-});
+task('copy-assets', () => src('source/assets/**/*').pipe(dest('dist/assets')));
 
 // Watch for changes and trigger tasks
 task('watch', () => {

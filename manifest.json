@@ -47,7 +47,7 @@
     "__firefox__browser_style": false
   },
   "background": {
-    "scripts": ["js/webextension.bundle.js", "js/background.bundle.js"],
+    "scripts": ["js/webextension.js", "js/background.js"],
     "__chrome|opera__persistent": true
   },
   "content_scripts": [
@@ -55,20 +55,20 @@
       "all_frames": true,
       "matches": ["file://*/*", "http://*/*", "https://*/*"],
       "run_at": "document_start",
-      "js": ["js/webextension.bundle.js", "js/contentScript.bundle.js"]
+      "js": ["js/webextension.js", "js/contentScript.js"]
     },
     {
       "matches": [
         "*://connect.trezor.io/9/popup.html",
         "https://localhost:8088/*"
       ],
-      "js": ["js/webextension.bundle.js", "js/trezorScript.bundle.js"]
+      "js": ["js/webextension.js", "js/trezorScript.js"]
     }
   ],
   "web_accessible_resources": [
-    "js/inpage.bundle.js",
-    "js/handleWindowProperties.bundle.js",
-    "js/pali.bundle.js"
+    "js/inpage.js",
+    "js/handleWindowProperties.js",
+    "js/pali.js"
   ],
   "commands": {
     "_execute_browser_action": {
