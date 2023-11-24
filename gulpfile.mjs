@@ -2,29 +2,31 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import gulp from 'gulp';
 const { task, dest, src, series, parallel } = gulp;
-// import babel from 'gulp-babel';
+import ts from 'gulp-typescript';
+import bro from 'gulp-bro';
+import babel from 'gulp-babel';
 import concat from 'gulp-concat';
 import htmlmin from 'gulp-htmlmin';
 import inject from 'gulp-inject';
 import nunjucksRender from 'gulp-nunjucks-render';
 import postcss from 'gulp-postcss';
-// import rename from 'gulp-rename';
+import rename from 'gulp-rename';
 import sourceMaps from 'gulp-sourcemaps';
 // import ts from 'gulp-typescript';
-import browserifycss from 'browserify-css';
-import uglify from 'gulp-uglify';
+// import browserifycss from 'browserify-css';
+// import uglify from 'gulp-uglify';
 import merge from 'merge-stream';
 import path from 'path';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 import cssnano from 'cssnano';
-import tsify from 'tsify';
+// import tsify from 'tsify';
 import { fileURLToPath } from 'url';
 import babelify from 'babelify';
 import { deleteAsync } from 'del';
-import buffer from 'vinyl-buffer';
-import source from 'vinyl-source-stream';
-import browserify from 'browserify';
+// import buffer from 'vinyl-buffer';
+// import source from 'vinyl-source-stream';
+// import browserify from 'browserify';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -40,26 +42,26 @@ const entries = {
     'webextension-polyfill-ts',
     'lib/index.js'
   ),
-  background: path.join(sourcePath, 'scripts/Background', 'index.ts'),
-  inpage: path.join(sourcePath, 'scripts/ContentScript', 'inject/inpage.ts'),
-  pali: path.join(sourcePath, 'scripts/ContentScript', 'inject/pali.ts'),
+  background: path.join(sourcePath, 'scripts/Background', 'index.js'),
+  inpage: path.join(sourcePath, 'scripts/ContentScript', 'inject/inpage.js'),
+  pali: path.join(sourcePath, 'scripts/ContentScript', 'inject/pali.js'),
   handleWindowProperties: path.join(
     sourcePath,
     'scripts/ContentScript',
-    'inject/handleWindowProperties.ts'
+    'inject/handleWindowProperties.js'
   ),
-  contentScript: path.join(sourcePath, 'scripts/ContentScript', 'index.ts'),
-  app: path.join(sourcePath, 'pages/App', 'index.tsx'),
-  external: path.join(sourcePath, 'pages/External', 'index.tsx'),
+  contentScript: path.join(sourcePath, 'scripts/ContentScript', 'index.js'),
+  app: path.join(sourcePath, 'pages/App', 'index.js'),
+  external: path.join(sourcePath, 'pages/External', 'index.js'),
   trezorScript: path.join(
     sourcePath,
     'scripts/ContentScript/trezor',
-    'trezor-content-script.ts'
+    'trezor-content-script.js'
   ),
   trezorUSB: path.join(
     sourcePath,
     'scripts/ContentScript/trezor',
-    'trezor-usb-permissions.ts'
+    'trezor-usb-permissions.js'
   ),
 };
 
@@ -91,31 +93,25 @@ task('clean', () => deleteAsync(['dist/**/*']));
 
 // Compile TypeScript to JavaScript
 task('scripts', () => {
-  const tasks = Object.keys(entries).map((entry) =>
-    browserify({
-      basedir: '.',
-      debug: true,
-      entries: [entries[entry]],
-      cache: {},
-      packageCache: {},
-    })
-      .plugin(tsify)
-      .transform(
-        babelify.configure({
-          presets: ['@babel/preset-env'],
+  const scriptsTask = Object.keys(entries).map((scriptName) => {
+    // Create a new TypeScript project for each entry
+    const tsProject = ts.createProject('tsconfig.json');
+
+    return src(entries[scriptName])
+      .pipe(
+        bro({
+          transform: [babelify.configure({ presets: ['@babel/preset-env'] })],
         })
       )
-      .transform(browserifycss, { global: true })
-      .bundle()
-      .pipe(source(`${entry}.bundle.js`)) // output filename
-      .pipe(buffer())
+      .pipe(babel())
+      .pipe(tsProject())
       .pipe(sourceMaps.init())
-      .pipe(uglify()) // Use uglify to minify your code if you want
+      .pipe(rename({ basename: scriptName, extname: '.js' })) // Rename each output file based on its entry name
       .pipe(sourceMaps.write())
-      .pipe(dest('dist/js'))
-  );
+      .pipe(dest(`dist/js`));
+  });
 
-  return merge(tasks);
+  return merge(scriptsTask);
 });
 
 //Compile HTML files from View path and inject the JS files
