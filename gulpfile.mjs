@@ -42,26 +42,26 @@ const entries = {
     'webextension-polyfill-ts',
     'lib/index.js'
   ),
-  background: path.join(sourcePath, 'scripts/Background', 'index.js'),
-  inpage: path.join(sourcePath, 'scripts/ContentScript', 'inject/inpage.js'),
-  pali: path.join(sourcePath, 'scripts/ContentScript', 'inject/pali.js'),
+  background: path.join(sourcePath, 'scripts/Background', 'index.ts'),
+  inpage: path.join(sourcePath, 'scripts/ContentScript', 'inject/inpage.ts'),
+  pali: path.join(sourcePath, 'scripts/ContentScript', 'inject/pali.ts'),
   handleWindowProperties: path.join(
     sourcePath,
     'scripts/ContentScript',
-    'inject/handleWindowProperties.js'
+    'inject/handleWindowProperties.ts'
   ),
-  contentScript: path.join(sourcePath, 'scripts/ContentScript', 'index.js'),
-  app: path.join(sourcePath, 'pages/App', 'index.js'),
-  external: path.join(sourcePath, 'pages/External', 'index.js'),
+  contentScript: path.join(sourcePath, 'scripts/ContentScript', 'index.ts'),
+  app: path.join(sourcePath, 'pages/App', 'index.tsx'),
+  external: path.join(sourcePath, 'pages/External', 'index.tsx'),
   trezorScript: path.join(
     sourcePath,
     'scripts/ContentScript/trezor',
-    'trezor-content-script.js'
+    'trezor-content-script.ts'
   ),
   trezorUSB: path.join(
     sourcePath,
     'scripts/ContentScript/trezor',
-    'trezor-usb-permissions.js'
+    'trezor-usb-permissions.ts'
   ),
 };
 
