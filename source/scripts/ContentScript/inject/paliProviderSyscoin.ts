@@ -171,7 +171,7 @@ export class PaliInpageProviderSys extends BaseProvider {
   }
   // private initializesysState() {
   //   //TODO: create sysInitialized event, fetch actual active blockexplorer and create state updates only for sys
-  //   const blockExplorerURL = 'https://blockbook-dev.elint.services/'; //Hardcoded to mainnet just for testing porpuses
+  //   const blockExplorerURL = 'https://blockbook-dev.syscoin.org/'; //Hardcoded to mainnet just for testing porpuses
   //   this._sysState = {
   //     blockExplorerURL,
   //     initialized: true,
