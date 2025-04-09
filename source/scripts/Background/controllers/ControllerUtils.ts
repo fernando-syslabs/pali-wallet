@@ -23,6 +23,8 @@ import { IControllerUtils } from 'types/controllers';
 import { getController } from 'utils/browser';
 import { getNetworkChain, logError } from 'utils/index';
 
+import { ensureTrailingSlash } from './assets/utils';
+
 const ControllerUtils = (): IControllerUtils => {
   const setFiat = async (currency?: string) => {
     if (!currency) {
@@ -53,11 +55,12 @@ const ControllerUtils = (): IControllerUtils => {
     switch (id) {
       case INetworkType.Syscoin:
         try {
-          const { chain } = await validateSysRpc(activeNetwork.url);
+          const activeNetworkURL = ensureTrailingSlash(activeNetwork.url);
+          const { chain } = await validateSysRpc(activeNetworkURL);
           if (chain !== 'test') {
             //TODO: add check to verify if the active network has a / by the end of the url
             const currencies = await (
-              await fetch(`${activeNetwork.url}${ASSET_PRICE_API}`)
+              await fetch(`${activeNetworkURL}${ASSET_PRICE_API}`)
             ).json();
             if (currencies && currencies.rates) {
               store.dispatch(setCoins(currencies.rates));

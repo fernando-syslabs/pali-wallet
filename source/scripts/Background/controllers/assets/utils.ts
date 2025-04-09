@@ -48,3 +48,11 @@ export const validateAndManageUserAssets = (
     (a, b) => a[tokenPropertyToUseAtGroupBy] === b[tokenPropertyToUseAtGroupBy]
   );
 };
+
+export const ensureTrailingSlash = (url: string) => {
+  // Check the last character using charAt
+  if (url.charAt(url.length - 1) !== '/') {
+    url += '/';
+  }
+  return url;
+};
