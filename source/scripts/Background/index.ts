@@ -244,6 +244,22 @@ async function checkForUpdates() {
   });
 }
 
+// Intervals manager
+function addPaliInterval(newID, tag) {
+  chrome.storage.local.get('PaliIntervals', (result) => {
+    const PaliIntervals = result.PaliIntervals ? result.PaliIntervals : {};
+    const currentID = PaliIntervals[tag];
+    if (currentID && currentID !== newID) {
+      console.log(`Interval ${tag}:${currentID} replaced by ${tag}:${newID}`);
+      clearInterval(currentID);
+    } else {
+      console.log(`New interval ${tag}:${newID}`);
+    }
+    PaliIntervals[tag] = newID;
+    chrome.storage.local.set({ PaliIntervals }, () => {});
+  });
+}
+
 let stateIntervalId;
 let pendingTransactionsPollingIntervalId;
 let isListenerRegistered = false;
@@ -262,6 +278,7 @@ function registerListener() {
         if (message.action === 'startPolling' && !isPolling) {
           store.dispatch(setIsPolling(true));
           stateIntervalId = setInterval(checkForUpdates, 15000);
+          addPaliInterval(stateIntervalId, 'polling');
           port.postMessage({ stateIntervalId });
         } else if (message.action === 'stopPolling') {
           clearInterval(stateIntervalId);
