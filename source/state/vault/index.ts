@@ -57,7 +57,7 @@ export const initialState: IVaultState = {
     ledger: false,
   },
   isLastTxConfirmed: {},
-  hasEthProperty: true,
+  hasEthProperty: false,
   activeChain: INetworkType.Syscoin,
   activeNetwork: SYSCOIN_MAINNET_NETWORK_57,
   hasErrorOndAppEVM: false,
