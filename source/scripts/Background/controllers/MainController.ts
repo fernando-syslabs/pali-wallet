@@ -405,13 +405,6 @@ const MainController = (walletState): IMainController => {
             type: wallet.activeAccountType,
           },
         });
-        window.controller.dapp.handleStateChange(PaliEvents.chainChanged, {
-          method: PaliEvents.chainChanged,
-          params: {
-            chainId: `0x${network.chainId.toString(16)}`,
-            networkVersion: network.chainId,
-          },
-        });
 
         window.controller.dapp.handleStateChange(PaliEvents.isBitcoinBased, {
           method: PaliEvents.isBitcoinBased,
@@ -425,6 +418,15 @@ const MainController = (walletState): IMainController => {
             params: isBitcoinBased ? network.url : null,
           }
         );
+
+        window.controller.dapp.handleStateChange(PaliEvents.chainChanged, {
+          method: PaliEvents.chainChanged,
+          params: {
+            chainId: `0x${network.chainId.toString(16)}`,
+            networkVersion: network.chainId,
+            isBitcoinBased: isBitcoinBased,
+          },
+        });
 
         switch (isBitcoinBased) {
           case true:

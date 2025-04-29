@@ -359,7 +359,12 @@ export class PaliInpageProviderEth extends BaseProvider {
   private _handleChainChanged({
     chainId,
     networkVersion,
-  }: { chainId?: string; networkVersion?: string } = {}) {
+    isBitcoinBased,
+  }: {
+    chainId?: string;
+    isBitcoinBased?: boolean;
+    networkVersion?: string;
+  } = {}) {
     if (!isValidChainId(chainId) || !isValidNetworkVersion(networkVersion)) {
       console.error(messages.errors.invalidNetworkParams(), {
         chainId,
@@ -379,6 +384,10 @@ export class PaliInpageProviderEth extends BaseProvider {
       this.networkVersion = networkVersion;
       if (this._state.initialized) {
         this.emit('chainChanged', this.chainId);
+      }
+    } else if (!isBitcoinBased) {
+      if (this._state.initialized) {
+        this.emit('chainChanged', chainId);
       }
     }
   }
